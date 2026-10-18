@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'package:expense_tracker/widgets/new_expense.dart';
 import 'package:expense_tracker/widgets/expenses_list/expenses_list.dart';
 import 'package:expense_tracker/models/expense.dart';
@@ -30,6 +29,22 @@ class _ExpensesState extends State<Expenses> {
     ),
   ];
 
+  bool _showLast7DaysOnly = false;
+
+  List<Expense> get _filteredExpenses {
+    if (!_showLast7DaysOnly) {
+      return _registeredExpenses;
+    }
+
+    final sevenDaysAgo = DateTime.now().subtract(
+      const Duration(days: 7),
+    );
+
+    return _registeredExpenses.where((expense) {
+      return expense.date.isAfter(sevenDaysAgo);
+    }).toList();
+  }
+
   void _openAddExpenseOverlay() {
     showModalBottomSheet(
       useSafeArea: true,
@@ -47,10 +62,13 @@ class _ExpensesState extends State<Expenses> {
 
   void _removeExpense(Expense expense) {
     final expenseIndex = _registeredExpenses.indexOf(expense);
+
     setState(() {
       _registeredExpenses.remove(expense);
     });
+
     ScaffoldMessenger.of(context).clearSnackBars();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 3),
@@ -75,9 +93,9 @@ class _ExpensesState extends State<Expenses> {
       child: Text('No expenses found. Start adding some!'),
     );
 
-    if (_registeredExpenses.isNotEmpty) {
+    if (_filteredExpenses.isNotEmpty) {
       mainContent = ExpensesList(
-        expenses: _registeredExpenses,
+        expenses: _filteredExpenses,
         onRemoveExpense: _removeExpense,
       );
     }
@@ -95,20 +113,46 @@ class _ExpensesState extends State<Expenses> {
       body: width < 600
           ? Column(
               children: [
-                Chart(expenses: _registeredExpenses),
+                SwitchListTile(
+                  title: const Text('Show Last 7 Days Only'),
+                  value: _showLast7DaysOnly,
+                  onChanged: (value) {
+                    setState(() {
+                      _showLast7DaysOnly = value;
+                    });
+                  },
+                ),
+                Chart(expenses: _filteredExpenses),
                 Expanded(
                   child: mainContent,
                 ),
               ],
             )
-          : Row(children: [
-              Expanded(
-                child: Chart(expenses: _registeredExpenses),
-              ),
-              Expanded(
-                child: mainContent,
-              ),
-            ]),
+          : Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Show Last 7 Days Only'),
+                        value: _showLast7DaysOnly,
+                        onChanged: (value) {
+                          setState(() {
+                            _showLast7DaysOnly = value;
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: Chart(expenses: _filteredExpenses),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: mainContent,
+                ),
+              ],
+            ),
     );
   }
 }
